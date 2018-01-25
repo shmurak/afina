@@ -10,6 +10,7 @@ namespace Allocator {
 // Forward declaration. Do not include real class definition
 // to avoid expensive macros calculations and increase compile speed
 class Pointer;
+
 /**
  * Wraps given memory area and provides defagmentation allocator interface on
  * the top of it.
@@ -19,17 +20,6 @@ class Pointer;
  * being needs
  */
 // TODO: Implements interface to allow usage as C++ allocators
-
-struct Block {
-    size_t size;
-    Block *next;
-    Block *prev;
-};
-
-struct Info {
-    size_t size;
-};
-
 class Simple {
 public:
     Simple(void *base, const size_t size);
@@ -66,12 +56,6 @@ public:
 private:
     void *_base;
     const size_t _base_len;
-    Block *first_free_block;
-    size_t bytes_free;
-    char *ds;
-    char *ds_begin;
-
-    Block* merge(Block*, Block*);
 };
 
 } // namespace Allocator

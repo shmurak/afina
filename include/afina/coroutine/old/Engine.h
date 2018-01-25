@@ -26,21 +26,13 @@ private:
         char *Low = nullptr;
 
         // coroutine stack end address
-        char *High = nullptr;
+        char *Hight = nullptr;
 
         // coroutine stack copy buffer
         std::tuple<char *, uint32_t> Stack = std::make_tuple(nullptr, 0);
 
         // Saved coroutine context (registers)
         jmp_buf Environment;
-
-        // Coroutine that has started this one. Once current routine is done, control must
-        // be passed back to caller
-        struct context *caller = nullptr;
-
-        // Coroutine got control from the current one. Whenever current routine
-        // continues self exectution it must transfers control to callee if any
-        struct context *callee = nullptr;
 
         // To include routine in the different lists, such as "alive", "blocked", e.t.c
         struct context *prev = nullptr;
@@ -67,6 +59,7 @@ private:
      */
     context *idle_ctx;
 
+protected:
     /**
      * Save stack of the current coroutine in the given context
      */
@@ -81,8 +74,6 @@ private:
      * Suspend current coroutine execution and execute given context
      */
     // void Enter(context& ctx);
-    
-    void force_sched(void* routine_);
 
 public:
     Engine() : StackBottom(0), cur_routine(nullptr), alive(nullptr) {}
@@ -130,11 +121,9 @@ public:
         if (setjmp(idle_ctx->Environment) > 0) {
             // Here: correct finish of the coroutine section
             yield();
-        } else {
-            if (pc != NULL) {
-                Store(*idle_ctx);
-                sched(pc);
-            }
+        } else if (pc != nullptr) {
+            Store(*idle_ctx);
+            sched(pc);
         }
 
         // Shutdown runtime
@@ -154,7 +143,6 @@ public:
 
         // New coroutine context that carries around all information enough to call function
         context *pc = new context();
-        pc->caller = cur_routine;
 
         // Store current state right here, i.e just before enter new coroutine, later, once it gets scheduled
         // execution starts here. Note that we have to acquire stack of the current function call to ensure
@@ -170,7 +158,6 @@ public:
             // to pass control after that. We never want to go backward by stack as that would mean to go backward in
             // time. Function run() has already return once (when setjmp returns 0), so return second return from run
             // would looks a bit awkward
-            context *next = pc->caller;
             if (pc->prev != nullptr) {
                 pc->prev->next = pc->next;
             }
@@ -179,29 +166,19 @@ public:
                 pc->next->prev = pc->prev;
             }
 
-            if (pc->caller != nullptr) {
-                pc->caller->callee = nullptr;
-            }
-
             if (alive == cur_routine) {
                 alive = alive->next;
             }
 
             // current coroutine finished, and the pointer is not relevant now
             cur_routine = nullptr;
-
             pc->prev = pc->next = nullptr;
-            if (std::get<0>(pc->Stack) != NULL) {
-              delete std::get<0>(pc->Stack);
-            }
+            delete std::get<0>(pc->Stack);
             delete pc;
 
             // We cannot return here, as this function "returned" once already, so here we must select some other
             // coroutine to run. As current coroutine is completed and can't be scheduled anymore, it is safe to
             // just give up and ask scheduler code to select someone else, control will never returns to this one
-            if (next != NULL) {
-                sched(next);
-            }
             Restore(*idle_ctx);
         }
 
@@ -210,8 +187,7 @@ public:
         // save stack.
         Store(*pc);
 
-        // Add routine as alive list
-        // add to the beginning of the double-linked list
+        // Add routine as alive double-linked list
         pc->next = alive;
         alive = pc;
         if (pc->next != nullptr) {
