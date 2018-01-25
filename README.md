@@ -48,3 +48,4 @@ make runProtocolTests && ./test/protocol/runProtocolTests - собрать и з
 make runNetworkTests && ./test/network/runNetworkTests - собрать и запустить тесты сетевой подсистемы
 make runStorageTests && ./test/storage/runStorageTests - собрать и запустить тесты хранилиза данных
 ```
+# afinan
