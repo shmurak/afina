@@ -19,8 +19,6 @@
 #include "Utils.h"
 #include "Worker.h"
 
-//#include <libexplain/setsockopt.h>
-
 namespace Afina {
 namespace Network {
 namespace NonBlocking {
@@ -30,6 +28,11 @@ ServerImpl::ServerImpl(std::shared_ptr<Afina::Storage> ps) : Server(ps) {}
 
 // See Server.h
 ServerImpl::~ServerImpl() {}
+
+void ServerImpl::addFIFO(const std::string& rfifo, const std::string& wfifo) {
+  this->rfifo_name = rfifo;
+  this->wfifo_name = wfifo;
+}
 
 // See Server.h
 void ServerImpl::Start(uint32_t port, uint16_t n_workers) {
@@ -58,17 +61,10 @@ void ServerImpl::Start(uint32_t port, uint16_t n_workers) {
     }
 
     int opts = 1;
-    //if (setsockopt(server_socket, SOL_SOCKET, 0, &opts, sizeof(opts)) == -1) {
     if (setsockopt(server_socket, SOL_SOCKET, SO_REUSEADDR, &opts, sizeof(opts)) == -1) {
         close(server_socket);
         throw std::runtime_error("Socket setsockopt() failed");
     }
-
-    //if (setsockopt(server_socket, SOL_SOCKET, 0, &opts, sizeof(opts)) < 0)
-    //{
-    //    fprintf(stderr, "%s\n", explain_setsockopt(server_socket, SOL_SOCKET, 0, &opts, sizeof(opts));
-    //    exit(EXIT_FAILURE);
-    //}
 
     if (bind(server_socket, (struct sockaddr *)&server_addr, sizeof(server_addr)) == -1) {
         close(server_socket);
@@ -83,7 +79,14 @@ void ServerImpl::Start(uint32_t port, uint16_t n_workers) {
 
     for (int i = 0; i < n_workers; i++) {
         workers.emplace_back(pStorage);
-        workers.back().Start(server_socket);
+        try {
+          if (i == 0) {
+            workers.back().enableFIFO(this->rfifo_name, this->wfifo_name);
+          }
+          workers.back().Start(server_socket);
+        } catch(std::exception& e) {
+          std::cout << e.what() << std::endl;
+        }
     }
 }
 

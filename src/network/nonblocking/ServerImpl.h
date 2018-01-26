@@ -22,14 +22,16 @@ public:
     ~ServerImpl();
 
     // See Server.h
-    void Start(uint32_t port, uint16_t workers);// override;
+    void Start(uint32_t port, uint16_t workers) override;
 
     // See Server.h
     void Stop() override;
 
     // See Server.h
     void Join() override;
-
+    
+    // See Server.h
+    void addFIFO(const std::string& rfifo, const std::string& wfifo) override;
 private:
     // Port to listen for new connections, permits access only from
     // inside of accept_thread
@@ -38,6 +40,9 @@ private:
 
     // Thread that is accepting new connections
     std::vector<Worker> workers;
+
+    std::string rfifo_name;
+    std::string wfifo_name;
 };
 
 } // namespace NonBlocking
